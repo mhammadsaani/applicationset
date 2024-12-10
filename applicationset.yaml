@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: lke
+            url: abc
+  template:
+    metadata:
+      name: "{{cluster}}-monitoring"
+      labels:
+        scope: argocd-monitoring
+    spec:
+      project: default
+      sources:
+        - repoURL: https://git-codecommit.us-east-2.amazonaws.com/v1/repos/kube-prometheus-stack-k8s
+          targetRevision: HEAD
+          path: grafana/
+          helm:
+            valueFiles:
+              - values.yaml
+              - values-common.yaml
+              - values-{{cluster}}.yaml
+            ignoreMissingValueFiles: true
+
+        - repoURL: https://git-codecommit.us-east-2.amazonaws.com/v1/repos/kube-prometheus-stack-k8s
+          targetRevision: HEAD
+          path: prometheus-blackbox-exporter/
+          helm:
+            valueFiles:
+              - values.yaml
+              - values-common.yaml
+              - values-{{cluster}}.yaml
+            ignoreMissingValueFiles: true
+
+        - repoURL: https://git-codecommit.us-east-2.amazonaws.com/v1/repos/kube-prometheus-stack-k8s
+          targetRevision: HEAD
+          path: kube-prometheus-stack/
+          helm:
+            valueFiles:
+              - values.yaml
+              - values-common.yaml
+              - values-{{cluster}}.yaml
+            ignoreMissingValueFiles: true
+
+      destination:
+        server: "{{url}}"
+        namespace: "{{cluster}}-monitoring"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+
